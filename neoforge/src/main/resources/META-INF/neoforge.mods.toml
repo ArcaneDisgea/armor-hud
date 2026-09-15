@@ -7,28 +7,29 @@ modId = "ukus_armor_hud"
 displayName = "uku's Armor HUD"
 version = "${version}"
 
-logoFile = "assets/ukus-armor-hud/icon.png"
+iconFile = "assets/ukus-armor-hud/icon.png"
 authors = "uku, BerdinskiyBear (original creator)"
 description = "This mod adds a minimalistic vanilla-like widget that shows your armor items and a warning if durability is low enough. Forked by uku."
+displayURL = "https://modrinth.com/project/wF189hn9"
 
 [[dependencies.ukus_armor_hud]]
 modId = "minecraft"
 type = "required"
-versionRange = "[26.2,)"
+versionRange = "[26.3,)"
 ordering = "NONE"
 side = "CLIENT"
 
 [[dependencies.ukus_armor_hud]]
 modId = "neoforge"
 type = "required"
-versionRange = "[26.2.0.0-beta,)"
+versionRange = "[26.3.0.0-beta,)"
 ordering = "NONE"
 side = "CLIENT"
 
 [[dependencies.ukus_armor_hud]]
 modId = "ukulib"
 type = "required"
-versionRange = "[2.1.0,3)"
+versionRange = "[2.2.0,3)"
 ordering = "NONE"
 side = "CLIENT"
 
