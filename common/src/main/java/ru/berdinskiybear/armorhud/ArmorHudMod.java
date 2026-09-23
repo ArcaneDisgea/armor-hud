@@ -78,21 +78,86 @@ public final class ArmorHudMod {
     }
 
     /**
-     * Returns the bounding box of the widget itself, <strong>excluding</strong> "external" information like warning icon
+     * A single widget to be drawn, with the items of both groups it contains. There are two
+     * of these when the trinkets are anchored to the other side of the screen.
      */
-    public static Optional<Rect2i> getWidgetRect(GuiGraphicsExtractor graphics, Player player) {
+    public record Widget(Rect2i rect, List<ItemStack> armor, List<ItemStack> trinkets) {
+    }
+
+    /**
+     * @return whether both groups share a single widget, which is the case when they are on
+     * the same side, or when the side setting does nothing at all
+     */
+    public static boolean isSingleWidget(ArmorHudConfig config) {
+        return config.getAnchor() == ArmorHudConfig.Anchor.TOP_CENTER
+                || config.getTrinketsSide() == config.getSide();
+    }
+
+    /**
+     * @return whether any widget is anchored to the given side of the screen
+     */
+    public static boolean isOnSide(ArmorHudConfig config, ArmorHudConfig.Side side) {
+        return config.getSide() == side
+                || (!isSingleWidget(config) && config.getTrinketsSide() == side);
+    }
+
+    /**
+     * Returns every widget to be drawn, in no particular order.
+     */
+    public static List<Widget> getWidgets(GuiGraphicsExtractor graphics, Player player) {
         ArmorHudConfig config = manager.getConfig();
         DisplayGroups groups = getDisplayGroups(player);
 
         if (groups.isEmpty()) {
+            return List.of();
+        }
+
+        if (isSingleWidget(config)) {
+            return getRect(graphics, player, getTotalLength(groups, config), config.getSide())
+                    .map(rect -> List.of(new Widget(rect, groups.armor(), groups.trinkets())))
+                    .orElseGet(List::of);
+        }
+
+        List<Widget> widgets = new ArrayList<>(2);
+        getRect(graphics, player, groupLength(groups.armor().size()), config.getSide())
+                .ifPresent(rect -> widgets.add(new Widget(rect, groups.armor(), List.of())));
+        getRect(graphics, player, groupLength(groups.trinkets().size()), config.getTrinketsSide())
+                .ifPresent(rect -> widgets.add(new Widget(rect, List.of(), groups.trinkets())));
+        return widgets;
+    }
+
+    /**
+     * Returns the bounding box of every widget merged together,
+     * <strong>excluding</strong> "external" information like warning icon
+     */
+    public static Optional<Rect2i> getWidgetRect(GuiGraphicsExtractor graphics, Player player) {
+        return getWidgets(graphics, player).stream().map(Widget::rect).reduce(ArmorHudMod::union);
+    }
+
+    private static Rect2i union(Rect2i a, Rect2i b) {
+        final int x = Math.min(a.getX(), b.getX());
+        final int y = Math.min(a.getY(), b.getY());
+        final int endX = Math.max(a.getX() + a.getWidth(), b.getX() + b.getWidth());
+        final int endY = Math.max(a.getY() + a.getHeight(), b.getY() + b.getHeight());
+
+        return new Rect2i(x, y, endX - x, endY - y);
+    }
+
+    /**
+     * Returns the bounding box of a single widget of the given length, anchored to the given side
+     */
+    private static Optional<Rect2i> getRect(GuiGraphicsExtractor graphics, Player player, int length, ArmorHudConfig.Side side) {
+        ArmorHudConfig config = manager.getConfig();
+
+        if (length == 0) {
             return Optional.empty();
         }
 
         // hotbar offset is relative to the bar, so when we are on the left it needs to be flipped
         // and on the right side, we need to flip the offset, except when anchored to the hotbar
         final int sideMultiplier, sideOffsetMultiplier;
-        if ((config.getAnchor() == ArmorHudConfig.Anchor.HOTBAR && config.getSide() == ArmorHudConfig.Side.LEFT)
-                || (config.getAnchor() != ArmorHudConfig.Anchor.HOTBAR && config.getSide() == ArmorHudConfig.Side.RIGHT)) {
+        if ((config.getAnchor() == ArmorHudConfig.Anchor.HOTBAR && side == ArmorHudConfig.Side.LEFT)
+                || (config.getAnchor() != ArmorHudConfig.Anchor.HOTBAR && side == ArmorHudConfig.Side.RIGHT)) {
             sideMultiplier = -1;
             sideOffsetMultiplier = -1;
         } else {
@@ -103,9 +168,9 @@ public final class ArmorHudMod {
         final int addedHotbarOffset = switch (config.getOffhandSlotBehavior()) {
             case ALWAYS_IGNORE -> 0;
             case ALWAYS_LEAVE_SPACE ->
-                    player.getMainArm() == config.getSide().asArm() ? ATTACK_INDICATOR_OFFSET : OFFHAND_OFFSET;
+                    player.getMainArm() == side.asArm() ? ATTACK_INDICATOR_OFFSET : OFFHAND_OFFSET;
             case ADHERE -> {
-                if (player.getMainArm() == config.getSide().asArm()) {
+                if (player.getMainArm() == side.asArm()) {
                     if (Minecraft.getInstance().options.attackIndicator().get() == AttackIndicatorStatus.HOTBAR &&
                             player.getAttackStrengthScale(0) < 1) {
                         yield ATTACK_INDICATOR_OFFSET;
@@ -118,9 +183,8 @@ public final class ArmorHudMod {
             }
         };
 
-        final int textureWidth = getTotalLength(groups, config);
-        final int widgetWidth = config.getOrientation() == ArmorHudConfig.Orientation.VERTICAL ? SIZE : textureWidth;
-        final int widgetHeight = config.getOrientation() == ArmorHudConfig.Orientation.VERTICAL ? textureWidth : SIZE;
+        final int widgetWidth = config.getOrientation() == ArmorHudConfig.Orientation.VERTICAL ? SIZE : length;
+        final int widgetHeight = config.getOrientation() == ArmorHudConfig.Orientation.VERTICAL ? length : SIZE;
 
         final int armorWidgetX = config.getOffsetX() * sideMultiplier + switch (config.getAnchor()) {
             case TOP_CENTER -> (graphics.guiWidth() - widgetWidth) / 2;

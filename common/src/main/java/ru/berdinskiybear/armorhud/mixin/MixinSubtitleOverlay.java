@@ -22,7 +22,7 @@ public class MixinSubtitleOverlay {
     public void calculateOffset(GuiGraphicsExtractor graphics, CallbackInfo ci, @Share("offset") LocalIntRef offsetRef) {
         ArmorHudConfig config = ArmorHudMod.getManager().getConfig();
         if (!config.isEnabled() || !config.isPushSubtitles() || config.getAnchor() != ArmorHudConfig.Anchor.BOTTOM
-                || config.getSide() != ArmorHudConfig.Side.RIGHT) return;
+                || !ArmorHudMod.isOnSide(config, ArmorHudConfig.Side.RIGHT)) return;
 
         Player player = ArmorHudMod.getCameraPlayer();
         if (player == null) return;

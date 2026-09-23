@@ -74,35 +74,32 @@ public abstract class MixinHud {
         Player player = getCameraPlayer();
         if (player == null) return;
 
-        final Optional<Rect2i> rect = getWidgetRect(graphics, player);
-        // return if there is nothing to draw
-        if (rect.isEmpty()) return;
+        // there are two widgets when the trinkets are anchored to the other side of the screen
+        for (Widget widget : getWidgets(graphics, player)) {
+            List<ItemStack> armorItems = widget.armor();
+            List<ItemStack> trinketItems = widget.trinkets();
+            if (config.isReversed()) {
+                armorItems = armorItems.reversed();
+                trinketItems = trinketItems.reversed();
+            }
 
-        // fetch armor and trinket items
-        DisplayGroups groups = getDisplayGroups(player);
-        List<ItemStack> armorItems = groups.armor();
-        List<ItemStack> trinketItems = groups.trinkets();
-        if (config.isReversed()) {
-            armorItems = armorItems.reversed();
-            trinketItems = trinketItems.reversed();
+            // both groups are laid out one after the other along the orientation axis
+            final int gap = armorItems.isEmpty() || trinketItems.isEmpty() ? 0 : config.getTrinketsGap();
+            final int armorOffset, trinketOffset;
+            if (config.getTrinketsPlacement() == ArmorHudConfig.TrinketsPlacement.BEFORE) {
+                trinketOffset = 0;
+                armorOffset = groupLength(trinketItems.size()) + gap;
+            } else {
+                armorOffset = 0;
+                trinketOffset = groupLength(armorItems.size()) + gap;
+            }
+
+            drawGroupBackground(graphics, config, widget.rect(), armorOffset, armorItems.size());
+            drawGroupBackground(graphics, config, widget.rect(), trinketOffset, trinketItems.size());
+
+            drawGroupSlots(graphics, tickCounter, player, config, widget.rect(), armorOffset, armorItems, true, 1);
+            drawGroupSlots(graphics, tickCounter, player, config, widget.rect(), trinketOffset, trinketItems, false, armorItems.size() + 1);
         }
-
-        // both groups are laid out one after the other along the orientation axis
-        final int gap = armorItems.isEmpty() || trinketItems.isEmpty() ? 0 : config.getTrinketsGap();
-        final int armorOffset, trinketOffset;
-        if (config.getTrinketsPlacement() == ArmorHudConfig.TrinketsPlacement.BEFORE) {
-            trinketOffset = 0;
-            armorOffset = groupLength(trinketItems.size()) + gap;
-        } else {
-            armorOffset = 0;
-            trinketOffset = groupLength(armorItems.size()) + gap;
-        }
-
-        drawGroupBackground(graphics, config, rect.get(), armorOffset, armorItems.size());
-        drawGroupBackground(graphics, config, rect.get(), trinketOffset, trinketItems.size());
-
-        drawGroupSlots(graphics, tickCounter, player, config, rect.get(), armorOffset, armorItems, true, 1);
-        drawGroupSlots(graphics, tickCounter, player, config, rect.get(), trinketOffset, trinketItems, false, armorItems.size() + 1);
     }
 
     /**
@@ -251,7 +248,7 @@ public abstract class MixinHud {
     public void calculateStatusEffectIconsOffset(GuiGraphicsExtractor graphics, DeltaTracker deltaTracker, CallbackInfo ci, @Share("shift") LocalIntRef shiftRef) {
         ArmorHudConfig config = getManager().getConfig();
         if (!config.isEnabled() || !config.isPushStatusEffectIcons() || config.getAnchor() != ArmorHudConfig.Anchor.TOP
-                || config.getSide() != ArmorHudConfig.Side.RIGHT) return;
+                || !isOnSide(config, ArmorHudConfig.Side.RIGHT)) return;
 
         Player player = getCameraPlayer();
         if (player == null) return;

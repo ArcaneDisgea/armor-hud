@@ -89,6 +89,15 @@ inside curly brackets). If any of the Configuration parameters are missing their
     * Shows items equipped in [Trinkets Updated](https://modrinth.com/mod/trinkets-updated) accessory
       slots as a second group next to the armor slots. Does nothing if Trinkets is not installed.
     * Default value: `true`
+1. ##### `"trinketsSide"`
+    * Side on which the trinkets group is shown, independently of `"side"`. When it differs
+      from `"side"`, the trinkets become their own widget anchored to the other side of the
+      screen, and `"trinketsPlacement"` and `"trinketsGap"` no longer apply. Setting does
+      nothing if the widget is anchored at the top in the middle.
+    * Possible values:
+        * `"LEFT"`
+        * `"RIGHT"`
+    * Default value: `"LEFT"`
 1. ##### `"trinketsFilter"`
     * Selects which equipped trinkets are shown.
     * Possible values:
@@ -97,11 +106,13 @@ inside curly brackets). If any of the Configuration parameters are missing their
         * `"DAMAGED"`: only trinkets whose durability is low enough to warrant a warning are shown.
     * Default value: `"DAMAGEABLE"`
 1. ##### `"trinketsPlacement"`
-    * Places the trinkets group before or after the armor group.
+    * Places the trinkets group before or after the armor group. Only applies when
+      `"trinketsSide"` matches `"side"`, as the two groups then share one widget.
     * Possible values:
         * `"BEFORE"`
         * `"AFTER"`
     * Default value: `"AFTER"`
 1. ##### `"trinketsGap"`
-    * Space in pixels left between the armor group and the trinkets group.
+    * Space in pixels left between the armor group and the trinkets group. Only applies when
+      `"trinketsSide"` matches `"side"`.
     * Default value: `4`

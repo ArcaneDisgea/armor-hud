@@ -35,6 +35,7 @@ public class ArmorHudConfig implements Serializable {
     private double minDurabilityPercentage = 0.1;
     private int warningBobIntensity = 3;
     private boolean trinketsShown = true;
+    private Side trinketsSide = Side.LEFT;
     private TrinketsFilter trinketsFilter = TrinketsFilter.DAMAGEABLE;
     private TrinketsPlacement trinketsPlacement = TrinketsPlacement.AFTER;
     private int trinketsGap = 4;
