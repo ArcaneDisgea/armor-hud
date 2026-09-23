@@ -38,6 +38,10 @@ public class ArmorHudConfigScreen extends AbstractConfigScreen<ArmorHudConfig> {
                 new SliderOption("armorhud.option.minDuraPercent", config.getMinDurabilityPercentage(), config::setMinDurabilityPercentage, SliderOption.PERCENT_VALUE_TO_TEXT),
                 new TypedInputOption<>("armorhud.option.offsetX", String.valueOf(config.getOffsetX()), config::setOffsetX, this::getInt),
                 new TypedInputOption<>("armorhud.option.offsetY", String.valueOf(config.getOffsetY()), config::setOffsetY, this::getInt),
+                CyclingOption.ofBoolean("armorhud.option.trinketsShown", config.isTrinketsShown(), config::setTrinketsShown),
+                CyclingOption.ofTranslatableEnum("armorhud.option.trinketsFilter", ArmorHudConfig.TrinketsFilter.class, config.getTrinketsFilter(), config::setTrinketsFilter),
+                CyclingOption.ofTranslatableEnum("armorhud.option.trinketsPlacement", ArmorHudConfig.TrinketsPlacement.class, config.getTrinketsPlacement(), config::setTrinketsPlacement),
+                new TypedInputOption<>("armorhud.option.trinketsGap", String.valueOf(config.getTrinketsGap()), config::setTrinketsGap, this::getInt),
         };
     }
 

@@ -34,6 +34,10 @@ public class ArmorHudConfig implements Serializable {
     private int minDurabilityValue = 20;
     private double minDurabilityPercentage = 0.1;
     private int warningBobIntensity = 3;
+    private boolean trinketsShown = true;
+    private TrinketsFilter trinketsFilter = TrinketsFilter.DAMAGEABLE;
+    private TrinketsPlacement trinketsPlacement = TrinketsPlacement.AFTER;
+    private int trinketsGap = 4;
 
     @Getter
     @AllArgsConstructor
@@ -113,6 +117,27 @@ public class ArmorHudConfig implements Serializable {
     public enum Orientation implements StringTranslatable {
         HORIZONTAL("horizontal", "armorhud.option.horizontal"),
         VERTICAL("vertical", "armorhud.option.vertical");
+
+        private final String name;
+        private final String translationKey;
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public enum TrinketsFilter implements StringTranslatable {
+        ALL("all", "armorhud.option.all"),
+        DAMAGEABLE("damageable", "armorhud.option.damageable"),
+        DAMAGED("damaged", "armorhud.option.damaged");
+
+        private final String name;
+        private final String translationKey;
+    }
+
+    @Getter
+    @AllArgsConstructor
+    public enum TrinketsPlacement implements StringTranslatable {
+        BEFORE("before", "armorhud.option.before"),
+        AFTER("after", "armorhud.option.after");
 
         private final String name;
         private final String translationKey;

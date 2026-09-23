@@ -15,6 +15,13 @@ public class ArmorHudFabric implements ClientModInitializer {
         } catch (Exception e) {
             log.debug("Not enabling Bedrockify compatibility");
         }
+
+        try {
+            Class.forName("eu.pb4.trinkets.api.TrinketsApi");
+            ArmorHudMod.setAccessoryProvider(new TrinketsCompat());
+        } catch (Exception e) {
+            log.debug("Not enabling Trinkets compatibility");
+        }
     }
 
     @Override

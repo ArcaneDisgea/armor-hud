@@ -10,6 +10,13 @@ repositories {
             includeGroup("maven.modrinth")
         }
     }
+    maven {
+        name = "Nucleoid"
+        url = uri("https://maven.nucleoid.xyz/releases")
+        content {
+            includeGroup("eu.pb4")
+        }
+    }
 }
 
 loom {
@@ -30,6 +37,7 @@ dependencies {
     api("net.uku3lig:ukulib-fabric:${BuildConfig.UKULIB_VERSION}")
 
     compileOnly("maven.modrinth:bedrockify:${BuildConfig.BEDROCKIFY_VERSION}")
+    compileOnly("eu.pb4:trinkets:${BuildConfig.TRINKETS_VERSION}") { isTransitive = false }
 }
 
 modrinth {

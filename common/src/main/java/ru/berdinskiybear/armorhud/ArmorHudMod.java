@@ -18,6 +18,8 @@ import net.uku3lig.ukulib.config.ConfigManager;
 import net.uku3lig.ukulib.utils.Ukutils;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.glfw.GLFW;
+import ru.berdinskiybear.armorhud.compat.AccessoryProvider;
+import ru.berdinskiybear.armorhud.compat.AccessorySlot;
 import ru.berdinskiybear.armorhud.compat.ModCompat;
 import ru.berdinskiybear.armorhud.config.ArmorHudConfig;
 import ru.berdinskiybear.armorhud.mixin.InventoryMenuAccessor;
@@ -45,8 +47,30 @@ public final class ArmorHudMod {
 
     private static final List<ItemStack> lastStacks = new ArrayList<>(Collections.nCopies(SLOT_IDS.length, ItemStack.EMPTY));
 
+    private static final Map<String, ItemStack> lastTrinketStacks = new HashMap<>();
+
     @Getter @Setter
     private static ModCompat modCompat = new ModCompat.NoOpModCompat();
+
+    @Getter @Setter
+    private static AccessoryProvider accessoryProvider = new AccessoryProvider.NoOpAccessoryProvider();
+
+    /**
+     * The items to be drawn, split into the armor group and the trinkets group.
+     */
+    public record DisplayGroups(List<ItemStack> armor, List<ItemStack> trinkets) {
+        public boolean isEmpty() {
+            return armor.isEmpty() && trinkets.isEmpty();
+        }
+    }
+
+    /**
+     * @return the length in pixels taken up by a group of {@code slots} slots, along the
+     * axis of the current orientation
+     */
+    public static int groupLength(int slots) {
+        return slots == 0 ? 0 : SIZE + ((slots - 1) * STEP);
+    }
 
     @Nullable
     public static Player getCameraPlayer() {
@@ -58,9 +82,9 @@ public final class ArmorHudMod {
      */
     public static Optional<Rect2i> getWidgetRect(GuiGraphicsExtractor graphics, Player player) {
         ArmorHudConfig config = manager.getConfig();
-        List<ItemStack> armorItems = getArmorItems(player);
+        DisplayGroups groups = getDisplayGroups(player);
 
-        if (armorItems.isEmpty()) {
+        if (groups.isEmpty()) {
             return Optional.empty();
         }
 
@@ -94,7 +118,7 @@ public final class ArmorHudMod {
             }
         };
 
-        final int textureWidth = SIZE + ((armorItems.size() - 1) * STEP);
+        final int textureWidth = getTotalLength(groups, config);
         final int widgetWidth = config.getOrientation() == ArmorHudConfig.Orientation.VERTICAL ? SIZE : textureWidth;
         final int widgetHeight = config.getOrientation() == ArmorHudConfig.Orientation.VERTICAL ? textureWidth : SIZE;
 
@@ -158,17 +182,68 @@ public final class ArmorHudMod {
         return items.toList();
     }
 
+    /**
+     * @return the total length in pixels of both groups, gap included
+     */
+    public static int getTotalLength(DisplayGroups groups, ArmorHudConfig config) {
+        int length = groupLength(groups.armor().size()) + groupLength(groups.trinkets().size());
+        if (!groups.armor().isEmpty() && !groups.trinkets().isEmpty()) {
+            length += config.getTrinketsGap();
+        }
+        return length;
+    }
+
+    public static DisplayGroups getDisplayGroups(Player player) {
+        return new DisplayGroups(getArmorItems(player), getTrinketItems(player));
+    }
+
+    public static List<ItemStack> getTrinketItems(Player player) {
+        return getTrinketSlots(player).stream().map(AccessorySlot::stack).toList();
+    }
+
+    private static List<AccessorySlot> getTrinketSlots(Player player) {
+        ArmorHudConfig config = manager.getConfig();
+        if (!config.isTrinketsShown()) {
+            return List.of();
+        }
+
+        // empty trinket slots are never drawn: there is no placeholder sprite for them and
+        // their amount varies, which would make the widget jump around
+        return accessoryProvider.getAccessories(player).stream()
+                .filter(slot -> !slot.stack().isEmpty())
+                .filter(slot -> switch (config.getTrinketsFilter()) {
+                    case ALL -> true;
+                    case DAMAGEABLE -> slot.stack().isDamageableItem();
+                    case DAMAGED -> shouldShowWarning(slot.stack());
+                })
+                .toList();
+    }
+
     public static boolean shouldPlayBreakSound(Player player) {
+        // every slot is always visited, so that the tracked stacks never go stale
+        boolean breaking = false;
+
         for (int i = 0; i < SLOT_IDS.length; i++) {
             EquipmentSlot slot = SLOT_IDS[i];
             ItemStack current = player.getItemBySlot(slot);
             ItemStack last = lastStacks.set(i, current);
             if (last.getDamageValue() != current.getDamageValue() && shouldShowWarning(current)) {
-                return true;
+                breaking = true;
             }
         }
 
-        return false;
+        Set<String> seen = new HashSet<>();
+        for (AccessorySlot slot : getTrinketSlots(player)) {
+            seen.add(slot.key());
+            ItemStack current = slot.stack();
+            ItemStack last = lastTrinketStacks.put(slot.key(), current);
+            if (last != null && last.getDamageValue() != current.getDamageValue() && shouldShowWarning(current)) {
+                breaking = true;
+            }
+        }
+        lastTrinketStacks.keySet().retainAll(seen);
+
+        return breaking;
     }
 
     public static boolean shouldShowWarning(ItemStack stack) {

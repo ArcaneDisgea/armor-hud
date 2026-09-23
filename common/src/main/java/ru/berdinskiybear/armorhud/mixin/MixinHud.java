@@ -78,21 +78,51 @@ public abstract class MixinHud {
         // return if there is nothing to draw
         if (rect.isEmpty()) return;
 
-        // fetch armor items
-        List<ItemStack> armorItems = getArmorItems(player);
+        // fetch armor and trinket items
+        DisplayGroups groups = getDisplayGroups(player);
+        List<ItemStack> armorItems = groups.armor();
+        List<ItemStack> trinketItems = groups.trinkets();
         if (config.isReversed()) {
             armorItems = armorItems.reversed();
+            trinketItems = trinketItems.reversed();
         }
 
-        final int textureWidth = SIZE + ((armorItems.size() - 1) * STEP);
+        // both groups are laid out one after the other along the orientation axis
+        final int gap = armorItems.isEmpty() || trinketItems.isEmpty() ? 0 : config.getTrinketsGap();
+        final int armorOffset, trinketOffset;
+        if (config.getTrinketsPlacement() == ArmorHudConfig.TrinketsPlacement.BEFORE) {
+            trinketOffset = 0;
+            armorOffset = groupLength(trinketItems.size()) + gap;
+        } else {
+            armorOffset = 0;
+            trinketOffset = groupLength(armorItems.size()) + gap;
+        }
 
-        // here I draw the slots
+        drawGroupBackground(graphics, config, rect.get(), armorOffset, armorItems.size());
+        drawGroupBackground(graphics, config, rect.get(), trinketOffset, trinketItems.size());
+
+        drawGroupSlots(graphics, tickCounter, player, config, rect.get(), armorOffset, armorItems, true, 1);
+        drawGroupSlots(graphics, tickCounter, player, config, rect.get(), trinketOffset, trinketItems, false, armorItems.size() + 1);
+    }
+
+    /**
+     * Draws the widget background of a single group, starting {@code offset} pixels along
+     * the orientation axis from the widget origin.
+     */
+    @Unique
+    private void drawGroupBackground(GuiGraphicsExtractor graphics, ArmorHudConfig config, Rect2i rect, int offset, int slotCount) {
+        if (slotCount == 0) return;
+
+        final int textureWidth = groupLength(slotCount);
+
         graphics.pose().pushMatrix();
-        graphics.pose().translate(rect.get().getX(), rect.get().getY());
+        graphics.pose().translate(rect.getX(), rect.getY());
 
         if (config.getOrientation() == ArmorHudConfig.Orientation.VERTICAL) {
             graphics.pose().rotate(Mth.HALF_PI).translate(0, -SIZE);
         }
+
+        graphics.pose().translate(offset, 0);
 
         int color = ARGB.white(ArmorHudMod.getModCompat().hudOpacity());
 
@@ -102,7 +132,7 @@ public abstract class MixinHud {
                 graphics.blitSprite(RenderPipelines.GUI_TEXTURED, HOTBAR_SPRITE, 182, 22, 182 - 3, 0, textureWidth - 3, 0, 3, SIZE, color);
             }
             case ROUNDED_CORNERS -> {
-                if (armorItems.size() > 1) {
+                if (slotCount > 1) {
                     graphics.blitSprite(RenderPipelines.GUI_TEXTURED, HOTBAR_OFFHAND_LEFT_SPRITE, 29, 24, 0, 1, 0, 0, 3, SIZE, color);
                     graphics.blitSprite(RenderPipelines.GUI_TEXTURED, HOTBAR_SPRITE, 182, 22, 3, 0, 3, 0, textureWidth - 6, SIZE, color);
                     graphics.blitSprite(RenderPipelines.GUI_TEXTURED, HOTBAR_OFFHAND_LEFT_SPRITE, 29, 24, SIZE - 3, 1, textureWidth - 3, 0, 3, SIZE, color);
@@ -111,11 +141,11 @@ public abstract class MixinHud {
                 }
             }
             case ROUNDED -> {
-                if (armorItems.size() > 1) {
+                if (slotCount > 1) {
                     int borderWidth = (SIZE - STEP) / 2;
                     graphics.blitSprite(RenderPipelines.GUI_TEXTURED, HOTBAR_OFFHAND_LEFT_SPRITE, 29, 24, 0, 1, 0, 0, SIZE - borderWidth, SIZE, color);
                     // nothing happens if slots <= 2
-                    for (int i = 1; i < armorItems.size() - 1; i++) {
+                    for (int i = 1; i < slotCount - 1; i++) {
                         graphics.blitSprite(RenderPipelines.GUI_TEXTURED, HOTBAR_OFFHAND_LEFT_SPRITE, 29, 24, borderWidth, 1, borderWidth + i * STEP, 0, STEP, SIZE, color);
                     }
                     graphics.blitSprite(RenderPipelines.GUI_TEXTURED, HOTBAR_OFFHAND_LEFT_SPRITE, 29, 24, 1, 1, textureWidth - STEP - borderWidth, 0, SIZE - borderWidth, SIZE, color);
@@ -126,26 +156,38 @@ public abstract class MixinHud {
             // case NONE -> // nothing to draw ^_^
         }
         graphics.pose().popMatrix();
+    }
 
-        for (int i = 0; i < armorItems.size(); i++) {
-            ItemStack stack = armorItems.get(i);
-            int x = rect.get().getX();
-            int y = rect.get().getY();
+    /**
+     * Draws the items of a single group, along with their durability and warning icons.
+     *
+     * @param armorGroup whether this group is the vanilla armor one, which is the only one
+     *                   with placeholder icons for empty slots
+     * @param seedBase   offset of the item render seed, so that both groups do not share
+     *                   the same item animations
+     */
+    @Unique
+    private void drawGroupSlots(GuiGraphicsExtractor graphics, DeltaTracker tickCounter, Player player, ArmorHudConfig config,
+                                Rect2i rect, int offset, List<ItemStack> stacks, boolean armorGroup, int seedBase) {
+        for (int i = 0; i < stacks.size(); i++) {
+            ItemStack stack = stacks.get(i);
+            int x = rect.getX();
+            int y = rect.getY();
 
             switch (config.getOrientation()) {
-                case HORIZONTAL -> x += (STEP * i);
-                case VERTICAL -> y += (STEP * i);
+                case HORIZONTAL -> x += offset + (STEP * i);
+                case VERTICAL -> y += offset + (STEP * i);
             }
 
             // here I blend in slot icons if so tells the current config
-            if (config.isIconsShown() && config.getWidgetShown().shouldDrawEmptySlots() && stack.isEmpty()) {
-                int slotIndex = config.isReversed() ? 3 - i : i;
+            if (armorGroup && config.isIconsShown() && config.getWidgetShown().shouldDrawEmptySlots() && stack.isEmpty()) {
+                int slotIndex = config.isReversed() ? stacks.size() - 1 - i : i;
                 Identifier identifier = InventoryMenuAccessor.getTEXTURE_EMPTY_SLOTS().get(SLOT_IDS[slotIndex]);
                 graphics.blitSprite(RenderPipelines.GUI_TEXTURED, identifier, x + 3, y + 3, 16, 16);
             }
 
             // here I draw the armour items
-            this.extractSlot(graphics, x + 3, y + 3, tickCounter, player, stack, i + 1);
+            this.extractSlot(graphics, x + 3, y + 3, tickCounter, player, stack, seedBase + i);
 
             // when anchoring to the hotbar, we want the warning to be on the other side to avoid clipping with the hotbar
             ArmorHudConfig.Side extrasSide = config.getAnchor() == ArmorHudConfig.Anchor.HOTBAR ? config.getSide() : config.getSide().getOpposite();
@@ -156,7 +198,7 @@ public abstract class MixinHud {
                 x += SIZE;
             }
 
-            if (config.getDurabilityDisplay() != ArmorHudConfig.DurabilityDisplay.BAR && !stack.isEmpty()) {
+            if (config.getDurabilityDisplay() != ArmorHudConfig.DurabilityDisplay.BAR && !stack.isEmpty() && stack.isDamageableItem()) {
                 String dura = switch (config.getDurabilityDisplay()) {
                     case NUMERIC -> String.valueOf(stack.getMaxDamage() - stack.getDamageValue());
                     case PERCENTAGE -> {

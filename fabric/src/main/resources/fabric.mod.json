@@ -35,6 +35,9 @@
     "ukulib": "^2.1.0",
     "fabric-resource-loader-v1": "*"
   },
+  "suggests": {
+    "trinkets_updated": "*"
+  },
   "breaks": {
     "armor_hud": "*"
   }

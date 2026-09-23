@@ -85,3 +85,23 @@ inside curly brackets). If any of the Configuration parameters are missing their
     Lower the number quicker the motion.
     * Set to 0 if you want to disable bobbing.
     * Default value: `2000.0`
+1. ##### `"trinketsShown"`
+    * Shows items equipped in [Trinkets Updated](https://modrinth.com/mod/trinkets-updated) accessory
+      slots as a second group next to the armor slots. Does nothing if Trinkets is not installed.
+    * Default value: `true`
+1. ##### `"trinketsFilter"`
+    * Selects which equipped trinkets are shown.
+    * Possible values:
+        * `"ALL"`: every equipped trinket is shown, including ones without durability such as a totem.
+        * `"DAMAGEABLE"`: only trinkets that have durability are shown.
+        * `"DAMAGED"`: only trinkets whose durability is low enough to warrant a warning are shown.
+    * Default value: `"DAMAGEABLE"`
+1. ##### `"trinketsPlacement"`
+    * Places the trinkets group before or after the armor group.
+    * Possible values:
+        * `"BEFORE"`
+        * `"AFTER"`
+    * Default value: `"AFTER"`
+1. ##### `"trinketsGap"`
+    * Space in pixels left between the armor group and the trinkets group.
+    * Default value: `4`
